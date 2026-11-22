@@ -6,6 +6,21 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
 <link rel="stylesheet" href="./style.css"/>
+<script>
+  const origFetch = window.fetch;
+  window.fetch = async function(input, init) {
+    const url = typeof input === 'string' ? input : input.url;
+    const res = await origFetch(input, init);
+    if (url.endsWith('.gz') && !res.headers.get('Content-Encoding')) {
+      const ds = new DecompressionStream('gzip');
+      const stream = res.body.pipeThrough(ds);
+      const headers = new Headers(res.headers);
+      if (url.endsWith('.wasm.gz')) headers.set('Content-Type', 'application/wasm');
+      return new Response(stream, { status: res.status, headers });
+    }
+    return res;
+  };
+</script>
 <!-- Yandex Games SDK -->
 <script src="./sdk.js"></script>
 <style>
