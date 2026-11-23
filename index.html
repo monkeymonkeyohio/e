@@ -6,6 +6,20 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
 <link rel="stylesheet" href="./style.css"/>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./gz-sw.js').then((reg) => {
+      if (!navigator.serviceWorker.controller) {
+        reg.addEventListener('updatefound', () => {
+          const nw = reg.installing;
+          nw.addEventListener('statechange', () => {
+            if (nw.state === 'activated') window.location.reload();
+          });
+        });
+      }
+    });
+  }
+</script>
 <!-- Yandex Games SDK -->
 <script src="./sdk.js"></script>
 <style>
