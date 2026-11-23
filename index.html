@@ -299,49 +299,122 @@
             console.log('%c' + message, style);
         }
 
-        async function InitYSDK() {
-            try {
-                if (IsLocalHost()) return;
+        
+async function InitYSDK() {
+    try {
+        if (IsLocalHost()) return;
 
-                ysdk = await YaGames.init();
-                ysdk.on('game_api_pause', PauseCallback);
-                ysdk.on('game_api_resume', ResumeCallback);
+        // Mock Yandex SDK outside Yandex
+        if (!window.YaGames && !window.location.hostname.includes('yandex')) {
+            window.YaGames = {
+                init: async () => ({
+                    on: () => {},
 
-                // Additional init0 modules
-await RequestingEnvironmentData();
-LogStyledMessage('Init EnvirData ysdk');
+                    environment: {
+                        i18n: { lang: 'en', tld: 'com' },
+                        app: { id: 'local' },
+                        browser: { lang: 'en' },
+                        payload: ''
+                    },
 
+                    deviceInfo: {
+                        type: 'desktop',
+                        isMobile: () => false,
+                        isDesktop: () => true,
+                        isTablet: () => false,
+                        isTV: () => false
+                    },
 
-                // Additional init1 modules
+                    getPlayer: async () => ({
+                        isAuthorized: () => false,
+                        getName: () => 'Player',
+                        getPhoto: () => '',
+                        getUniqueID: () => 'local_player',
+                        getPayingStatus: () => 'unknown',
+                        getData: async () => ({}),
+                        setData: async () => {}
+                    }),
 
-                // Additional init2 modules
-await InitPlayer();
-LogStyledMessage('Init Authorization ysdk');
+                    getStorage: async () => ({
+                        getItem: async (key) => localStorage.getItem(key),
+                        setItem: async (key, value) => localStorage.setItem(key, value),
+                        removeItem: async (key) => localStorage.removeItem(key)
+                    }),
 
+                    getFlags: async () => ({}),
 
-                // Additional init modules
-await LoadCloud();
-LogStyledMessage('Init Storage ysdk');
+                    getPayments: async () => ({
+                        getCatalog: async () => [],
+                        getPurchases: async () => [],
+                        purchase: async () => {
+                            throw new Error('Payments unavailable outside Yandex');
+                        },
+                        consumePurchase: async () => {}
+                    }),
 
-await InitPayments();
-LogStyledMessage('Init Payments ysdk');
+                    feedback: {
+                        canReview: async () => ({ value: false }),
+                        requestReview: async () => ({ feedbackSent: false })
+                    },
 
-await GetFlags();
-LogStyledMessage('Init Flags ysdk');
+                    features: {
+                        LoadingAPI: { ready: () => {} },
+                        GameplayAPI: {
+                            start: () => {},
+                            stop: () => {}
+                        }
+                    },
 
-
-                initYSDK = true;
-                SendInitSDKComplete();
-
-                LogStyledMessage('Init YandexSDK Success');
-
-            } catch (e) {
-                console.error('CRASH Initialization SDK: ', e);
-            }
-
-            if (!IsLocalHost() && !syncInit)
-                StartUnityInstance_IfUnloaded();
+                    adv: {
+                        showFullscreenAdv: (opts) => {
+                            opts?.callbacks?.onClose?.(false);
+                        },
+                        showRewardedVideo: (opts) => {
+                            opts?.callbacks?.onClose?.();
+                        }
+                    }
+                })
+            };
         }
+
+        ysdk = await YaGames.init();
+
+        ysdk.on('game_api_pause', PauseCallback);
+        ysdk.on('game_api_resume', ResumeCallback);
+
+        // Environment
+        await RequestingEnvironmentData();
+        LogStyledMessage('Init EnvirData ysdk');
+
+        // Player
+        await InitPlayer();
+        LogStyledMessage('Init Authorization ysdk');
+
+        // Cloud Storage
+        await LoadCloud();
+        LogStyledMessage('Init Storage ysdk');
+
+        // Payments
+        await InitPayments();
+        LogStyledMessage('Init Payments ysdk');
+
+        // Flags
+        await GetFlags();
+        LogStyledMessage('Init Flags ysdk');
+
+        initYSDK = true;
+        SendInitSDKComplete();
+
+        LogStyledMessage('Init YandexSDK Success');
+
+    } catch (e) {
+        console.error('CRASH Initialization SDK: ', e);
+    }
+
+    if (!IsLocalHost() && !syncInit)
+        StartUnityInstance_IfUnloaded();
+}
+
 
         function InitGame() {
             initGame = true;
